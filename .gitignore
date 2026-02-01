@@ -1,0 +1,11 @@
+.idea
+dist
+.DS_Store
+*.pyc
+__pycache__
+*.tar
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
