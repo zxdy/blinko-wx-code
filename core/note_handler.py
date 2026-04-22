@@ -11,19 +11,19 @@ from utils.cache import MessageIdCache
 from utils.tag_parser import TagParser
 from utils.note_template import NoteSource, TEMPLATES
 from utils.logger import get_logger
-from config.constants import MSG_TYPE_TEXT, MSG_TYPE_LINK, TEMPLATE_STANDARD
+from config.constants import MSG_TYPE_TEXT, MSG_TYPE_LINK, TEMPLATE_DETAILED
 
 
 class NoteHandler:
     """笔记保存统一入口"""
 
-    def __init__(self, template_name: str = TEMPLATE_STANDARD):
+    def __init__(self, template_name: str = TEMPLATE_DETAILED):
         self.blinko: BlinkoService = container.get_blinko_service()
         self.cache: MessageIdCache = container.get_message_cache()
         self.wecom_api: WeComAPI = container.get_wecom_api()
 
         # 使用预设模板
-        self.template = TEMPLATES.get(template_name, TEMPLATES[TEMPLATE_STANDARD])
+        self.template = TEMPLATES.get(template_name, TEMPLATES[TEMPLATE_DETAILED])
 
         self.logger = get_logger(__name__)
 
@@ -44,15 +44,17 @@ class NoteHandler:
         """
         self.logger.info(f"保存文本笔记，长度: {len(content)}")
 
-        # 解析标签
-        tags = self._parse_tags(content)
+        # 解析标签并获取处理后的内容
+        tags, processed_content = self._parse_tags_and_content(content)
+        self.logger.info(f"解析结果: tags={tags}, processed_content长度={len(processed_content)}")
 
         # 使用模板格式化
         formatted_content = self.template.format_text(
-            content=content,
+            content=processed_content,
             source=source,
             tags=tags
         )
+        self.logger.info(f"格式化后内容长度: {len(formatted_content)}, 前50字符: {formatted_content[:50]}")
 
         # 保存到 Blinko
         success = self.blinko.save_note(formatted_content)
@@ -87,7 +89,7 @@ class NoteHandler:
 
         # 解析标签（基于标题和描述）
         full_text = f"{title} {desc or ''}"
-        tags = self._parse_tags(full_text)
+        tags, _ = self._parse_tags_and_content(full_text)
 
         # 使用模板格式化
         formatted_content = self.template.format_link(
@@ -168,23 +170,26 @@ class NoteHandler:
 
         return None
 
-    def _parse_tags(self, content: str) -> Optional[str]:
+    def _parse_tags_and_content(self, content: str) -> tuple:
         """
-        解析内容中的标签
+        解析内容中的标签，返回标签和处理后的内容
 
         Args:
-            content: 内容
+            content: 原始内容
 
         Returns:
-            标签字符串或 None
+            (标签字符串或 None, 处理后的内容)
         """
         parsed = TagParser.parse(content)
 
         # 如果内容和解析后内容不同，说明添加了标签
         if parsed != content:
-            # 提取第一行的标签
-            first_line = parsed.split('\n')[0]
-            if first_line.startswith('#'):
-                return first_line
+            lines = parsed.split('\n')
+            # 第一行是标签
+            if lines[0].startswith('#'):
+                tag = lines[0]
+                # 剩余部分是内容（去掉标签行和后面的空行）
+                processed_content = '\n'.join(lines[2:]) if len(lines) > 2 else content
+                return tag, processed_content
 
-        return None
+        return None, content

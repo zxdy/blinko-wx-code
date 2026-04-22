@@ -57,14 +57,14 @@ class NoteTemplate:
         if self.config["include_source"] or self.config["include_time"]:
             meta_parts = []
             if self.config["include_time"]:
-                meta_parts.append(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+                meta_parts.append(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
             if self.config["include_source"] and source != NoteSource.UNKNOWN:
                 source_map = {
-                    NoteSource.WECHAT_APP: "企业微信",
-                    NoteSource.WECHAT_KF: "企业微信客服",
+                    NoteSource.WECHAT_APP: "微信",
+                    NoteSource.WECHAT_KF: "微信客服",
                     NoteSource.HTTP_API: "API",
                 }
-                meta_parts.append(f"📌 来源: {source_map.get(source, '未知')}")
+                meta_parts.append(f"保存来源: {source_map.get(source, '未知')}")
             if meta_parts:
                 parts.append("> " + " | ".join(meta_parts))
 
@@ -170,7 +170,7 @@ class NoteTemplate:
         # 元信息
         meta_parts = []
         if self.config["include_time"]:
-            meta_parts.append(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            meta_parts.append(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         if self.config["include_source"] and source != NoteSource.UNKNOWN:
             source_map = {
                 NoteSource.WECHAT_APP: "企业微信",
@@ -190,7 +190,7 @@ class NoteTemplate:
 
         # 原链接（可选显示）
         if self.config["include_type"]:
-            parts.append(f"\n🔗 {url}")
+            parts.append(f"\n链接: {url}")
 
         return "\n\n".join(parts)
 
