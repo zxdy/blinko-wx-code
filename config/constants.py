@@ -19,3 +19,8 @@ NOTE_LENGTH_THRESHOLD = 200
 MSG_NOTE_SAVED = "note saved"
 MSG_NOTE_ALREADY_SAVED = "note already saved"
 MSG_SAVE_FAILED = "note save failed"
+
+# 笔记模板预设
+TEMPLATE_MINIMAL = "minimal"     # 最简模板
+TEMPLATE_STANDARD = "standard"   # 标准模板（默认）
+TEMPLATE_DETAILED = "detailed"   # 详细模板

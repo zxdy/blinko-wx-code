@@ -1,4 +1,7 @@
 # 参考文档: https://developer.work.weixin.qq.com/document/path/96466
+import xml.etree.cElementTree as ET
+
+
 class UserInfo(object):
     def __init__(self, name, user_id):
         self.name = name
@@ -29,6 +32,12 @@ class ReqMsg(object):
             return VideoReqMsg(xml_tree)
         else:
             return None
+
+    @staticmethod
+    def create_msg_from_xml(xml_str: str):
+        """从 XML 字符串创建消息对象"""
+        xml_tree = ET.fromstring(xml_str)
+        return ReqMsg.create_msg(xml_tree)
 
 
 class TextReqMsg(ReqMsg):
