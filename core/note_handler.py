@@ -193,8 +193,8 @@ class NoteHandler:
         """
         self.logger.info(f"保存链接笔记: {title}")
 
-        # 解析标签（基于标题和描述）
-        full_text = f"{title} {desc or ''}"
+        # 解析标签（基于标题、描述和URL）
+        full_text = f"{title} {desc or ''} {url}"
         tags, _ = self._parse_tags_and_content(full_text)
 
         # 使用模板格式化
