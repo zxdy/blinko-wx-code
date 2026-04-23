@@ -11,7 +11,7 @@ from utils.cache import MessageIdCache, PendingNoteCache
 from utils.tag_parser import TagParser
 from utils.note_template import NoteSource, TEMPLATES
 from utils.logger import get_logger
-from config.constants import MSG_TYPE_TEXT, MSG_TYPE_LINK, TEMPLATE_DETAILED
+from config.constants import MSG_TYPE_TEXT, MSG_TYPE_LINK, MSG_TYPE_IMAGE, TEMPLATE_DETAILED
 
 
 class NoteHandler:
@@ -235,6 +235,19 @@ class NoteHandler:
         if msgtype == MSG_TYPE_TEXT:
             content = msg.get('text', {}).get('content', '')
             return self.save_text(content, NoteSource.WECHAT_KF)
+
+        elif msgtype == MSG_TYPE_IMAGE:
+            image_data = msg.get('image', {})
+            pic_url = image_data.get('pic_url')
+            user_id = msg.get('external_userid', 'unknown')
+
+            if pic_url:
+                success, message = self.save_image(pic_url, user_id)
+                self.logger.info(f"图片保存结果: {message}")
+                return success
+            else:
+                self.logger.warning("图片消息缺少 pic_url")
+                return False
 
         elif msgtype == MSG_TYPE_LINK:
             link_data = msg.get('link', {})

@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  blinko-wx:
+    image: ghcr.io/zxdy/blinko-wx-code:main-1f80ad7
+    container_name: blinko-wx
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "35385:5001"  # Web 应用端口
+      - "39039:22"      # SSH 端口（可选，调试用）
+    environment:
+      # 企业微信配置
+      - WECOM_CORP_ID=${WECOM_CORP_ID}
+      - WECOM_CORP_SECRET=${WECOM_CORP_SECRET}
+      - WECOM_TOKEN=${WECOM_TOKEN}
+      - WECOM_AES_KEY=${WECOM_AES_KEY}
+      # Blinko 配置
+      - BLINKO_API_URL=${BLINKO_API_URL}
+      - BLINKO_API_TOKEN=${BLINKO_API_TOKEN}
+      # 服务器配置
+      - HOST=0.0.0.0
+      - PORT=5001
+      - TZ=Asia/Shanghai
+      # 缓存配置
+      - CACHE_EXPIRE_SECONDS=600
+      # 回调配置
+      - CALLBACK_URL=${CALLBACK_URL}
+    #  volumes:
+      # 绿联云存储路径映射
+      # - ./app:/app
+      # 如需持久化日志，可添加:
+      # - /volume1/docker/blinko-wx/logs:/app/logs
+    networks:
+      - blinko_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  blinko_network:
+    driver: bridge
