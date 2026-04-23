@@ -160,3 +160,16 @@ class WeComAPI:
         if self._async_client:
             await self._async_client.aclose()
             self._async_client = None
+
+    def get_media_url(self, media_id: str) -> Optional[str]:
+        """
+        获取素材下载 URL
+
+        Args:
+            media_id: 素材 ID
+
+        Returns:
+            下载 URL 或 None
+        """
+        access_token = self.token_manager.get_token()
+        return f"{self.BASE_URL}/media/get?access_token={access_token}&media_id={media_id}"

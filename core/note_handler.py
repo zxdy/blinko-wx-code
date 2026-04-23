@@ -238,15 +238,30 @@ class NoteHandler:
 
         elif msgtype == MSG_TYPE_IMAGE:
             image_data = msg.get('image', {})
+            self.logger.info(f"图片消息原始数据: {image_data}")
+
+            # 尝试获取 pic_url 或 media_id
             pic_url = image_data.get('pic_url')
+            media_id = image_data.get('media_id')
             user_id = msg.get('external_userid', 'unknown')
 
             if pic_url:
                 success, message = self.save_image(pic_url, user_id)
                 self.logger.info(f"图片保存结果: {message}")
                 return success
+            elif media_id:
+                # 通过 media_id 下载图片
+                self.logger.info(f"图片使用 media_id: {media_id}")
+                image_url = self.wecom_api.get_media_url(media_id)
+                if image_url:
+                    success, message = self.save_image(image_url, user_id)
+                    self.logger.info(f"图片保存结果: {message}")
+                    return success
+                else:
+                    self.logger.warning("无法获取 media_id 对应的图片 URL")
+                    return False
             else:
-                self.logger.warning("图片消息缺少 pic_url")
+                self.logger.warning("图片消息缺少 pic_url 或 media_id")
                 return False
 
         elif msgtype == MSG_TYPE_LINK:
