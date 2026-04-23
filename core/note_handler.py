@@ -3,11 +3,11 @@
 统一处理来自不同渠道的消息，避免代码重复
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from core.container import container
 from services.wecom_api import WeComAPI
 from services.blinko_service import BlinkoService
-from utils.cache import MessageIdCache
+from utils.cache import MessageIdCache, PendingNoteCache
 from utils.tag_parser import TagParser
 from utils.note_template import NoteSource, TEMPLATES
 from utils.logger import get_logger
@@ -20,12 +20,118 @@ class NoteHandler:
     def __init__(self, template_name: str = TEMPLATE_DETAILED):
         self.blinko: BlinkoService = container.get_blinko_service()
         self.cache: MessageIdCache = container.get_message_cache()
+        self.pending_cache: PendingNoteCache = container.get_pending_note_cache()
         self.wecom_api: WeComAPI = container.get_wecom_api()
 
         # 使用预设模板
         self.template = TEMPLATES.get(template_name, TEMPLATES[TEMPLATE_DETAILED])
 
         self.logger = get_logger(__name__)
+
+    def save_image(self, image_url: str, user_id: str) -> Tuple[bool, str]:
+        """
+        保存图片笔记，支持追加到已有笔记
+
+        Args:
+            image_url: 图片 URL (PicUrl)
+            user_id: 用户 ID（用于缓存关联）
+
+        Returns:
+            (success, message) - 是否成功和响应消息
+        """
+        self.logger.info(f"处理图片笔记，user_id: {user_id}, image_url: {image_url[:50]}...")
+
+        # 1. 上传图片到 Blinko
+        attachment = self.blinko.upload_image(image_url)
+        if not attachment:
+            self.logger.error("图片上传失败")
+            return False, "图片上传失败"
+
+        # 2. 检查用户是否有待更新笔记
+        pending = self.pending_cache.get_pending(user_id)
+
+        if pending:
+            note_id, existing_attachments = pending
+            # 追加图片到已有笔记
+            new_attachments = existing_attachments + [attachment]
+
+            self.logger.info(f"追加图片到笔记 ID: {note_id}, 现有图片数: {len(existing_attachments)}")
+
+            updated_id, success = self.blinko.upsert_note(
+                content=None,
+                attachments=new_attachments,
+                note_id=note_id
+            )
+
+            if success:
+                # 更新缓存
+                self.pending_cache.set_pending(user_id, updated_id, new_attachments)
+                return True, "图片已保存，2分钟内发送文字可添加描述"
+            else:
+                return False, "图片追加失败"
+        else:
+            # 创建新笔记
+            self.logger.info("创建新图片笔记")
+
+            note_id, success = self.blinko.upsert_note(
+                content=None,
+                attachments=[attachment],
+                note_id=None
+            )
+
+            if success:
+                # 缓存待更新笔记
+                self.pending_cache.set_pending(user_id, note_id, [attachment])
+                return True, "图片已保存，2分钟内发送文字可添加描述"
+            else:
+                return False, "图片笔记创建失败"
+
+    def update_pending_note(self, user_id: str, content: str) -> Tuple[bool, str]:
+        """
+        更新待更新笔记的内容（添加文字描述）
+
+        Args:
+            user_id: 用户 ID
+            content: 文字描述内容
+
+        Returns:
+            (success, message) - 是否成功和响应消息
+        """
+        pending = self.pending_cache.get_pending(user_id)
+
+        if not pending:
+            # 无待更新笔记，独立保存文字
+            self.logger.info(f"无待更新笔记，独立保存文字: {content[:50]}...")
+            success = self.save_text(content, NoteSource.WECHAT_APP)
+            return success, "笔记已保存" if success else "笔记保存失败"
+
+        note_id, attachments = pending
+
+        self.logger.info(f"更新笔记 ID: {note_id}, 添加描述: {content[:50]}...")
+
+        # 解析标签
+        tags, processed_content = self._parse_tags_and_content(content)
+
+        # 使用模板格式化内容
+        formatted_content = self.template.format_text(
+            content=processed_content,
+            source=NoteSource.WECHAT_APP,
+            tags=tags
+        )
+
+        # 更换笔记内容
+        updated_id, success = self.blinko.upsert_note(
+            content=formatted_content,
+            attachments=attachments,
+            note_id=note_id
+        )
+
+        if success:
+            # 清除缓存（笔记已完成）
+            self.pending_cache.clear_pending(user_id)
+            return True, "笔记已更新"
+        else:
+            return False, "笔记更新失败"
 
     def save_text(
         self,

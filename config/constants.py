@@ -24,3 +24,10 @@ MSG_SAVE_FAILED = "note save failed"
 TEMPLATE_MINIMAL = "minimal"     # 最简模板
 TEMPLATE_STANDARD = "standard"   # 标准模板（默认）
 TEMPLATE_DETAILED = "detailed"   # 详细模板
+
+# 待更新笔记缓存过期时间（秒）
+PENDING_NOTE_EXPIRE_SECONDS = 120
+
+# 图片笔记响应消息
+MSG_IMAGE_SAVED = "图片已保存，2分钟内发送文字可添加描述"
+MSG_NOTE_UPDATED = "笔记已更新"
